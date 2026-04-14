@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 // Bar text /
 // big month text /
 // very big price text bold/
@@ -12,7 +11,7 @@ import 'package:flutter/material.dart';
 TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
   // for appbars title
   titleLarge: base.titleLarge!.copyWith(
-    fontFamily: "Quicksand",
+    fontFamily: 'Quicksand',
     fontWeight: FontWeight.w600,
     fontSize: 20,
     color: const Color(0xFF000000),
@@ -20,7 +19,7 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for very big total text
   displayLarge: base.displayLarge!.copyWith(
-    fontFamily: "Quicksand",
+    fontFamily: 'Quicksand',
     fontWeight: FontWeight.bold,
     fontSize: 36,
     color: const Color(0xFF000000),
@@ -28,7 +27,7 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for big month text
   headlineLarge: base.headlineLarge!.copyWith(
-    fontFamily: "Quicksand",
+    fontFamily: 'Quicksand',
     fontWeight: FontWeight.w500,
     fontSize: 24,
     color: const Color(0xFF000000),
@@ -36,7 +35,7 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for card number home page
   headlineMedium: base.headlineMedium!.copyWith(
-    fontFamily: "Quicksand",
+    fontFamily: 'Quicksand',
     fontWeight: FontWeight.w600,
     fontSize: 24,
     color: const Color(0xFF000000),
@@ -44,7 +43,7 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for default text
   bodyMedium: base.bodyMedium!.copyWith(
-    fontFamily: "Quicksand",
+    fontFamily: 'Quicksand',
     fontWeight: FontWeight.w500,
     fontSize: 16,
     color: const Color(0xFF000000),
@@ -52,7 +51,7 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for default text but bold
   titleMedium: base.titleMedium!.copyWith(
-    fontFamily: "Quicksand",
+    fontFamily: 'Quicksand',
     fontWeight: FontWeight.bold,
     fontSize: 16,
     color: const Color(0xFF000000),
@@ -60,7 +59,7 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for card sub title (small text)
   bodySmall: base.bodySmall!.copyWith(
-    fontFamily: "Quicksand",
+    fontFamily: 'Quicksand',
     fontWeight: FontWeight.w500,
     fontSize: 14,
     color: const Color(0xFF9E9E9E), // Sub text color
@@ -88,6 +87,13 @@ final ThemeData appTheme = ThemeData(
     showUnselectedLabels: false,
   ),
   textTheme: _asthaTutorialTextTheme(ThemeData.light().textTheme),
+  inputDecorationTheme: const InputDecorationTheme(
+    focusedBorder: OutlineInputBorder(
+      borderSide: BorderSide(color: Colors.grey, width: 2.0),
+      borderRadius: BorderRadius.all(Radius.circular(8.0)),
+    ),
+    floatingLabelStyle: TextStyle(color: Colors.black87),
+  ),
   colorScheme: const ColorScheme.light(
     primary: Color(0xFFFFF9C4),
     secondary: Color(0xFFE62314),

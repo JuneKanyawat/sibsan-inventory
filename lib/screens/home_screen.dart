@@ -1,5 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'add_part_tab.dart';
+import 'manage_car_tab.dart';
+import 'part_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,9 +17,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Placeholder widgets for each tab
   static const List<Widget> _widgetOptions = <Widget>[
-    Center(child: Text('Home')),
-    Center(child: Text('Add Part')),
-    Center(child: Text('Manage Car')),
+    _HomeTab(),
+    AddPartTab(),
+    ManageCarTab(),
   ];
 
   void _onItemTapped(int index) {
@@ -30,18 +34,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.add_circle_outline_rounded),
-          onPressed: () {
-            /* Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const NewCategoryScreen(),
-              ),
-            ); */
-          },
+        title: Text(
+          _selectedIndex == 0 
+              ? 'Sibsan' 
+              : _selectedIndex == 1 
+                  ? 'Add Part' 
+                  : 'Manage Car',
         ),
-        title: const Text('Expense Tracker'),
+        centerTitle: true,
       ),
       body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
       bottomNavigationBar: Theme(
@@ -97,6 +97,101 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: _onItemTapped,
         ),
       ),
+    );
+  }
+}
+
+class _HomeTab extends StatelessWidget {
+  const _HomeTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            ),
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('parts').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(child: Text('Something went wrong'));
+              }
+
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final docs = snapshot.data?.docs ?? [];
+
+              if (docs.isEmpty) {
+                return const Center(child: Text('No parts found.'));
+              }
+
+              return ListView.builder(
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
+                  final docId = docs[index].id;
+                  final name = data['name']?.toString() ?? 'Name';
+                  final price = data['cost_price']?.toString() ?? '490';
+                  final barcode = data['barcode']?.toString() ?? '2345656886';
+                  final location = data['location']?.toString() ?? 'C21';
+
+                  return InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PartDetailScreen(docId: docId, data: data),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                            Expanded(
+                              child: Text(
+                                name, 
+                                style: const TextStyle(fontSize: 16),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('- ฿ $price', style: const TextStyle(fontSize: 16)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(barcode, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
+                            Text(location, style: const TextStyle(fontSize: 14)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
