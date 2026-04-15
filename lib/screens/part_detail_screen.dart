@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'edit_part_screen.dart';
@@ -17,17 +18,26 @@ class PartDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final barcode = _formatText(data['barcode']);
-    final name = _formatText(data['name']);
-    final description = _formatText(data['description']);
-    final location = _formatText(data['location']);
-    
-    final sellPrice = _formatText(data['sell_price']);
-    final costPrice = _formatText(data['cost_price']);
-    final repairPrice = _formatText(data['repair_price']);
-    final quantity = _formatText(data['quantity']);
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('parts').doc(docId).snapshots(),
+      builder: (context, snapshot) {
+        Map<String, dynamic> currentData = data;
+        
+        if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+          currentData = snapshot.data!.data() as Map<String, dynamic>;
+        }
 
-    final tagsRaw = data['tags'];
+        final barcode = _formatText(currentData['barcode']);
+        final name = _formatText(currentData['name']);
+        final description = _formatText(currentData['description']);
+        final location = _formatText(currentData['location']);
+        
+        final sellPrice = _formatText(currentData['sell_price']);
+        final costPrice = _formatText(currentData['cost_price']);
+        final repairPrice = _formatText(currentData['repair_price']);
+        final quantity = _formatText(currentData['quantity']);
+
+        final tagsRaw = currentData['tags'];
     String tags = '-';
     if (tagsRaw is List && tagsRaw.isNotEmpty) {
       final validTags = tagsRaw.where((e) => e != null && e.toString().trim().isNotEmpty).map((e) => e.toString().trim()).toList();
@@ -38,11 +48,11 @@ class PartDetailScreen extends StatelessWidget {
       tags = tagsRaw;
     }
 
-    final imagePathRaw = data['image_url'] ?? data['image_path'];
+    final imagePathRaw = currentData['image_url'] ?? currentData['image_path'];
     final imagePath = imagePathRaw?.toString() ?? '';
     final hasImage = imagePath.isNotEmpty && imagePath.toLowerCase() != 'null';
 
-    final compatibleRaw = data['compatible_vehicles'];
+    final compatibleRaw = currentData['compatible_vehicles'];
     List<dynamic> compatibleVehicles = [];
     if (compatibleRaw is List) {
       compatibleVehicles = compatibleRaw;
@@ -101,7 +111,7 @@ class PartDetailScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => EditPartScreen(
                               docId: docId,
-                              initialData: data,
+                              initialData: currentData,
                             ),
                           ),
                         );
@@ -183,6 +193,8 @@ class PartDetailScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }

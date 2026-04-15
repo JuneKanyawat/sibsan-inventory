@@ -43,7 +43,6 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for default text
   bodyMedium: base.bodyMedium!.copyWith(
-    fontFamily: 'Quicksand',
     fontWeight: FontWeight.w500,
     fontSize: 16,
     color: const Color(0xFF000000),
@@ -51,7 +50,6 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for default text but bold
   titleMedium: base.titleMedium!.copyWith(
-    fontFamily: 'Quicksand',
     fontWeight: FontWeight.bold,
     fontSize: 16,
     color: const Color(0xFF000000),
@@ -59,7 +57,6 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 
   // for card sub title (small text)
   bodySmall: base.bodySmall!.copyWith(
-    fontFamily: 'Quicksand',
     fontWeight: FontWeight.w500,
     fontSize: 14,
     color: const Color(0xFF9E9E9E), // Sub text color
@@ -67,7 +64,6 @@ TextTheme _asthaTutorialTextTheme(TextTheme base) => base.copyWith(
 );
 
 final ThemeData appTheme = ThemeData(
-  fontFamily: 'Quicksand',
   brightness: Brightness.light,
   primaryColor: const Color(0xFFFFF9C4),
   scaffoldBackgroundColor: const Color(0xFFFFFFFF),

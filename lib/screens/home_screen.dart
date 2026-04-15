@@ -101,8 +101,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HomeTab extends StatelessWidget {
+class _HomeTab extends StatefulWidget {
   const _HomeTab();
+
+  @override
+  State<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<_HomeTab> {
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,9 +125,26 @@ class _HomeTab extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: TextField(
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value.trim();
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'ค้นหาชื่อหรือบาร์โค้ด...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() { _searchQuery = ''; });
+                      },
+                    )
+                  : null,
+              border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             ),
           ),
         ),
@@ -129,10 +160,20 @@ class _HomeTab extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final docs = snapshot.data?.docs ?? [];
+              var docs = snapshot.data?.docs ?? [];
+
+              if (_searchQuery.isNotEmpty) {
+                final queryLower = _searchQuery.toLowerCase();
+                docs = docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final name = (data['name']?.toString() ?? '').toLowerCase();
+                  final barcode = (data['barcode']?.toString() ?? '').toLowerCase();
+                  return name.contains(queryLower) || barcode.contains(queryLower);
+                }).toList();
+              }
 
               if (docs.isEmpty) {
-                return const Center(child: Text('No parts found.'));
+                return const Center(child: Text('ไม่พบข้อมูลอะไหล่ที่ค้นหา'));
               }
 
               return ListView.builder(
