@@ -116,18 +116,14 @@ class VehicleDetailScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(8.0),
+                      image: hasImage ? DecorationImage(
+                        image: NetworkImage(imagePath),
+                        fit: BoxFit.cover,
+                      ) : null,
                     ),
                     child: hasImage 
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Text(
-                              'ระบบรูปภาพกำลังพัฒนา\n(Image Provide)',
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )
-                      : null, // Empty grey box if no image, as in mockup
+                      ? null
+                      : const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
                   ),
                 ),
 

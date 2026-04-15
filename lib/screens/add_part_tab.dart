@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../services/image_service.dart';
 
 class AddPartTab extends StatefulWidget {
   const AddPartTab({super.key});
@@ -26,6 +30,9 @@ class _AddPartTabState extends State<AddPartTab> {
   String? _selectedModel;
 
   final List<Map<String, String>> _compatibleVehicles = [];
+
+  File? _selectedImage;
+  final ImageService _imageService = ImageService();
 
   bool _isLoading = false;
 
@@ -112,7 +119,40 @@ class _AddPartTabState extends State<AddPartTab> {
       _selectedBrand = null;
       _selectedModel = null;
       _compatibleVehicles.clear();
+      _selectedImage = null;
     });
+  }
+
+  void _pickImageSource() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('ถ่ายรูป (Camera)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await _imageService.pickImage(ImageSource.camera);
+                  if (file != null) setState(() { _selectedImage = file; });
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('เลือกจากคลังภาพ (Gallery)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await _imageService.pickImage(ImageSource.gallery);
+                  if (file != null) setState(() { _selectedImage = file; });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _savePart() async {
@@ -125,6 +165,14 @@ class _AddPartTabState extends State<AddPartTab> {
     });
 
     try {
+      String imageUrl = 'null';
+      if (_selectedImage != null) {
+        final url = await _imageService.uploadImage(_selectedImage!, 'parts');
+        if (url != null) {
+          imageUrl = url;
+        }
+      }
+
       final tags = _tagController.text
           .split(',')
           .map((e) => e.trim())
@@ -142,7 +190,7 @@ class _AddPartTabState extends State<AddPartTab> {
         'repair_price': num.tryParse(_repairController.text.trim()) ?? 0,
         'quantity': num.tryParse(_quantityController.text.trim()) ?? 0,
         'compatible_vehicles': _compatibleVehicles,
-        'image_url': 'null',
+        'image_url': imageUrl,
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       };
@@ -325,7 +373,7 @@ class _AddPartTabState extends State<AddPartTab> {
                     ),
                   ),
 
-                  // Photos Section (Placeholder)
+                  // Photos Section
                   Container(
                     margin: const EdgeInsets.only(bottom: 24.0),
                     padding: const EdgeInsets.all(16.0),
@@ -336,22 +384,29 @@ class _AddPartTabState extends State<AddPartTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('รูปถ่าย', style: TextStyle(color: Colors.grey)),
+                        const Text('รูปถ่าย (กดเพื่อเลือก/ถ่ายรูป)', style: TextStyle(color: Colors.grey)),
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              color: Colors.grey.shade300,
-                              child: const Icon(Icons.add_a_photo, color: Colors.grey),
-                            ),
-                            const SizedBox(width: 16),
-                            Container(
-                              width: 80,
-                              height: 80,
-                              color: Colors.grey.shade300,
-                              child: const Icon(Icons.add_a_photo, color: Colors.grey),
+                            GestureDetector(
+                              onTap: _pickImageSource,
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  image: _selectedImage != null
+                                      ? DecorationImage(
+                                          image: FileImage(_selectedImage!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
+                                ),
+                                child: _selectedImage == null
+                                    ? const Icon(Icons.add_a_photo, color: Colors.grey)
+                                    : null,
+                              ),
                             ),
                           ],
                         )

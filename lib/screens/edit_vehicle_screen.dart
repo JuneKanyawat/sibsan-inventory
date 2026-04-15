@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../services/image_service.dart';
 
 class EditVehicleScreen extends StatefulWidget {
   final String docId;
@@ -18,6 +22,10 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   late final TextEditingController _modelController;
   late final TextEditingController _yearController;
   late final TextEditingController _tagController;
+
+  String? _existingImageUrl;
+  File? _selectedImage;
+  final ImageService _imageService = ImageService();
 
   bool _isLoading = false;
 
@@ -38,6 +46,11 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
       tagsStr = tagsRaw;
     }
     _tagController = TextEditingController(text: tagsStr);
+
+    final rawImage = d['image_url'] ?? d['image'];
+    if (rawImage != null && rawImage.toString().trim() != 'null' && rawImage.toString().trim().isNotEmpty) {
+      _existingImageUrl = rawImage.toString().trim();
+    }
   }
 
   @override
@@ -47,6 +60,38 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     _yearController.dispose();
     _tagController.dispose();
     super.dispose();
+  }
+
+  void _pickImageSource() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('ถ่ายรูป (Camera)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await _imageService.pickImage(ImageSource.camera);
+                  if (file != null) setState(() { _selectedImage = file; });
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('เลือกจากคลังภาพ (Gallery)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await _imageService.pickImage(ImageSource.gallery);
+                  if (file != null) setState(() { _selectedImage = file; });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _deleteVehicle() async {
@@ -109,6 +154,14 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     });
 
     try {
+      String imageUrl = _existingImageUrl ?? 'null';
+      if (_selectedImage != null) {
+        final url = await _imageService.uploadImage(_selectedImage!, 'vehicles');
+        if (url != null) {
+          imageUrl = url;
+        }
+      }
+
       final tags = _tagController.text
           .split(',')
           .map((e) => e.trim())
@@ -120,6 +173,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
         'model': _modelController.text.trim(),
         'year': _yearController.text.trim(),
         'tag': tags,
+        'image': imageUrl,
       };
 
       await FirebaseFirestore.instance.collection('vehicles').doc(widget.docId).update(updatedData);
@@ -186,7 +240,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
               _buildTextField('ปี (Year) เช่น 2019-2030', _yearController),
               _buildTextField('tag (คั่นด้วยลูกน้ำ)', _tagController),
 
-              // Photos Section (Placeholder to match Part Edit page)
+              // Photos Section
               Container(
                 margin: const EdgeInsets.only(bottom: 24.0),
                 padding: const EdgeInsets.all(16.0),
@@ -197,15 +251,34 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('รูปถ่าย', style: TextStyle(color: Colors.grey)),
+                    const Text('รูปถ่าย (กดเพื่อเปลี่ยน/ถ่ายรูปใหม่)', style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          color: Colors.grey.shade300,
-                          child: const Icon(Icons.add_a_photo, color: Colors.grey),
+                        GestureDetector(
+                          onTap: _pickImageSource,
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(8.0),
+                              image: _selectedImage != null
+                                  ? DecorationImage(
+                                      image: FileImage(_selectedImage!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : (_existingImageUrl != null
+                                      ? DecorationImage(
+                                          image: NetworkImage(_existingImageUrl!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null),
+                            ),
+                            child: _selectedImage == null && _existingImageUrl == null
+                                ? const Icon(Icons.add_a_photo, color: Colors.grey)
+                                : null,
+                          ),
                         ),
                       ],
                     )

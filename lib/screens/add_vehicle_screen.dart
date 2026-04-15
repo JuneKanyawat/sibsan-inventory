@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../services/image_service.dart';
 
 class AddVehicleScreen extends StatefulWidget {
   const AddVehicleScreen({super.key});
@@ -16,6 +20,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _yearController = TextEditingController();
   final _tagController = TextEditingController();
 
+  File? _selectedImage;
+  final ImageService _imageService = ImageService();
+
   bool _isLoading = false;
 
   @override
@@ -25,6 +32,38 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     _yearController.dispose();
     _tagController.dispose();
     super.dispose();
+  }
+
+  void _pickImageSource() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('ถ่ายรูป (Camera)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await _imageService.pickImage(ImageSource.camera);
+                  if (file != null) setState(() { _selectedImage = file; });
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('เลือกจากคลังภาพ (Gallery)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await _imageService.pickImage(ImageSource.gallery);
+                  if (file != null) setState(() { _selectedImage = file; });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
 
@@ -38,6 +77,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     });
 
     try {
+      String imageUrl = 'null';
+      if (_selectedImage != null) {
+        final url = await _imageService.uploadImage(_selectedImage!, 'vehicles');
+        if (url != null) {
+          imageUrl = url;
+        }
+      }
+
       final tags = _tagController.text
           .split(',')
           .map((e) => e.trim())
@@ -49,7 +96,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'model': _modelController.text.trim(),
         'year': _yearController.text.trim(),
         'tag': tags,
-        'image': 'null',
+        'image': imageUrl,
         'created_at': FieldValue.serverTimestamp(),
       };
 
@@ -117,7 +164,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               _buildTextField('ปี (Year) เช่น 2019-2030', _yearController),
               _buildTextField('tag (คั่นด้วยลูกน้ำ)', _tagController),
 
-              // Photos Section (Placeholder to match Part Add page)
+              // Photos Section
               Container(
                 margin: const EdgeInsets.only(bottom: 24.0),
                 padding: const EdgeInsets.all(16.0),
@@ -128,15 +175,29 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('รูปถ่าย', style: TextStyle(color: Colors.grey)),
+                    const Text('รูปถ่าย (กดเพื่อเลือก/ถ่ายรูป)', style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          color: Colors.grey.shade300,
-                          child: const Icon(Icons.add_a_photo, color: Colors.grey),
+                        GestureDetector(
+                          onTap: _pickImageSource,
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(8.0),
+                              image: _selectedImage != null
+                                  ? DecorationImage(
+                                      image: FileImage(_selectedImage!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: _selectedImage == null
+                                ? const Icon(Icons.add_a_photo, color: Colors.grey)
+                                : null,
+                          ),
                         ),
                       ],
                     )

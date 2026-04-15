@@ -132,17 +132,13 @@ class PartDetailScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(8.0),
+                  image: hasImage ? DecorationImage(
+                    image: NetworkImage(imagePath),
+                    fit: BoxFit.cover,
+                  ) : null,
                 ),
                 child: hasImage 
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text(
-                          'ระบบรูปภาพกำลังพัฒนา\n(Image Path Provided)',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
+                  ? null
                   : const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
               ),
             ),

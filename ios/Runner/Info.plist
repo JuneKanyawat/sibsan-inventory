@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to take photos of vehicle parts and inventory items.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photos access to select photos of vehicle parts and inventory items from your gallery.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access for taking videos (if applicable).</string>
 </dict>
 </plist>
