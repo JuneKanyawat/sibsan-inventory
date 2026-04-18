@@ -262,7 +262,9 @@ class _AddPartTabState extends State<AddPartTab> {
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.bolt), // Lightning icon
                       onPressed: () {
-                        // Scan barcode functionality placeholder
+                        setState(() {
+                          _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString();
+                        });
                       },
                     ),
                   ),

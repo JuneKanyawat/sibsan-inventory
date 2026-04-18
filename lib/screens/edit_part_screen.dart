@@ -337,7 +337,11 @@ class _EditPartScreenState extends State<EditPartScreen> {
                 _barcodeController,
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.bolt), // Lightning icon
-                  onPressed: () {},
+                  onPressed: () {
+                    setState(() {
+                      _barcodeController.text = DateTime.now().millisecondsSinceEpoch.toString();
+                    });
+                  },
                 ),
               ),
               _buildTextField('ชื่อ', _nameController),
