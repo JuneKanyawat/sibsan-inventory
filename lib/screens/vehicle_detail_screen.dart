@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'edit_vehicle_screen.dart'; 
+import 'part_detail_screen.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   final String docId;
@@ -70,6 +71,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           appBar: AppBar(
             title: const Text('รายละเอียดรถยนต์'),
             centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.home_outlined),
+                tooltip: 'กลับหน้าแรก',
+                onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+              ),
+            ],
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -228,40 +236,53 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                         final partBarcode = _formatText(partData['barcode']);
                         final partPrice = _formatText(partData['cost_price']);
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8.0),
-                          padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      partName,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      partBarcode,
-                                      style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                                    ),
-                                  ],
+                        return InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PartDetailScreen(
+                                  docId: filteredDocs[index].id,
+                                  data: partData,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '- ฿ $partPrice',
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ],
+                            );
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8.0),
+                            padding: const EdgeInsets.all(12.0),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        partName,
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        partBarcode,
+                                        style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '- ฿ $partPrice',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },

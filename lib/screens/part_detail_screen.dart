@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'edit_part_screen.dart';
+import 'vehicle_detail_screen.dart';
 
 class PartDetailScreen extends StatelessWidget {
   final String docId;
@@ -70,6 +71,13 @@ class PartDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('รายละเอียดอะไหล่'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home_outlined),
+            tooltip: 'กลับหน้าแรก',
+            onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -156,20 +164,67 @@ class PartDetailScreen extends StatelessWidget {
                   if (vehicle is Map) {
                      final vBrand = _formatText(vehicle['brand']);
                      final vModel = _formatText(vehicle['model']);
-                     return Container(
-                       margin: const EdgeInsets.only(bottom: 8.0),
-                       padding: const EdgeInsets.all(12.0),
-                       decoration: BoxDecoration(
-                         color: Colors.grey.shade50,
-                         border: Border.all(color: Colors.grey.shade300),
-                         borderRadius: BorderRadius.circular(8.0),
-                       ),
-                       child: Row(
-                         children: [
-                           const Icon(Icons.directions_car_outlined, color: Colors.grey),
-                           const SizedBox(width: 12),
-                           Text('$vBrand $vModel', style: const TextStyle(fontSize: 16)),
-                         ],
+                     return InkWell(
+                       onTap: () async {
+                          showDialog(
+                            context: context, 
+                            barrierDismissible: false, 
+                            builder: (context) => const Center(child: CircularProgressIndicator())
+                          );
+                          
+                          try {
+                            final snapshot = await FirebaseFirestore.instance.collection('vehicles')
+                              .where('brand', isEqualTo: vehicle['brand'])
+                              .where('model', isEqualTo: vehicle['model'])
+                              .limit(1)
+                              .get();
+                            
+                            if (context.mounted) Navigator.pop(context); // close dialog
+                            
+                            if (snapshot.docs.isNotEmpty) {
+                              final doc = snapshot.docs.first;
+                              if (context.mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => VehicleDetailScreen(
+                                      docId: doc.id,
+                                      data: doc.data(),
+                                    ),
+                                  ),
+                                );
+                              }
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('ไม่พบข้อมูลรถยนต์รุ่นนี้ในระบบ')),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              Navigator.pop(context); // close dialog
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+                              );
+                            }
+                          }
+                       },
+                       child: Container(
+                         margin: const EdgeInsets.only(bottom: 8.0),
+                         padding: const EdgeInsets.all(12.0),
+                         decoration: BoxDecoration(
+                           color: Colors.grey.shade50,
+                           border: Border.all(color: Colors.grey.shade300),
+                           borderRadius: BorderRadius.circular(8.0),
+                         ),
+                         child: Row(
+                           children: [
+                             const Icon(Icons.directions_car_outlined, color: Colors.grey),
+                             const SizedBox(width: 12),
+                             Text('$vBrand $vModel', style: const TextStyle(fontSize: 16)),
+                           ],
+                         ),
                        ),
                      );
                   }
