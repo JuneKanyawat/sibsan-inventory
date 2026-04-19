@@ -142,6 +142,7 @@ class _ManageCarTabState extends State<ManageCarTab> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'addBtn',
         onPressed: () {
           Navigator.push(
             context,

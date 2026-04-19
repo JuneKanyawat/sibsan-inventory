@@ -3,11 +3,18 @@ import 'package:flutter/material.dart';
 
 import 'edit_vehicle_screen.dart'; 
 
-class VehicleDetailScreen extends StatelessWidget {
+class VehicleDetailScreen extends StatefulWidget {
   final String docId;
   final Map<String, dynamic> data;
 
   const VehicleDetailScreen({super.key, required this.docId, required this.data});
+
+  @override
+  State<VehicleDetailScreen> createState() => _VehicleDetailScreenState();
+}
+
+class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
+  final TextEditingController _searchController = TextEditingController();
 
   String _formatText(dynamic value) {
     if (value == null) return '-';
@@ -17,7 +24,16 @@ class VehicleDetailScreen extends StatelessWidget {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final docId = widget.docId;
+    final data = widget.data;
+
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('vehicles').doc(docId).snapshots(),
       builder: (context, snapshot) {
@@ -135,6 +151,28 @@ class VehicleDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 
+                TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'ค้นหาอะไหล่ (ชื่อ หรือ บาร์โค้ด)...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    suffixIcon: _searchController.text.isNotEmpty ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _searchController.clear();
+                        });
+                      },
+                    ) : null,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('parts')
@@ -152,8 +190,16 @@ class VehicleDetailScreen extends StatelessWidget {
                     }
 
                     final partsDocs = partsSnapshot.data?.docs ?? [];
+                    final query = _searchController.text.trim().toLowerCase();
+                    
+                    final filteredDocs = partsDocs.where((doc) {
+                      final partData = doc.data() as Map<String, dynamic>;
+                      final partName = _formatText(partData['name']).toLowerCase();
+                      final partBarcode = _formatText(partData['barcode']).toLowerCase();
+                      return partName.contains(query) || partBarcode.contains(query);
+                    }).toList();
 
-                    if (partsDocs.isEmpty) {
+                    if (filteredDocs.isEmpty) {
                       return Container(
                         padding: const EdgeInsets.all(16.0),
                         decoration: BoxDecoration(
@@ -161,10 +207,12 @@ class VehicleDetailScreen extends StatelessWidget {
                           border: Border.all(color: Colors.grey.shade300),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
-                            'ยังไม่มีอะไหล่ที่เชื่อมโยงกับรถรุ่นนี้',
-                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                            partsDocs.isEmpty 
+                                ? 'ยังไม่มีอะไหล่ที่เชื่อมโยงกับรถรุ่นนี้' 
+                                : 'ไม่พบอะไหล่ที่ค้นหา',
+                            style: const TextStyle(color: Colors.grey, fontSize: 16),
                           ),
                         ),
                       );
@@ -173,9 +221,9 @@ class VehicleDetailScreen extends StatelessWidget {
                     return ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: partsDocs.length,
+                      itemCount: filteredDocs.length,
                       itemBuilder: (context, index) {
-                        final partData = partsDocs[index].data() as Map<String, dynamic>;
+                        final partData = filteredDocs[index].data() as Map<String, dynamic>;
                         final partName = _formatText(partData['name']);
                         final partBarcode = _formatText(partData['barcode']);
                         final partPrice = _formatText(partData['cost_price']);
