@@ -31,7 +31,7 @@ class _AddPartTabState extends State<AddPartTab> {
 
   final List<Map<String, String>> _compatibleVehicles = [];
 
-  File? _selectedImage;
+  List<File> _selectedImages = [];
   final ImageService _imageService = ImageService();
 
   bool _isLoading = false;
@@ -119,11 +119,16 @@ class _AddPartTabState extends State<AddPartTab> {
       _selectedBrand = null;
       _selectedModel = null;
       _compatibleVehicles.clear();
-      _selectedImage = null;
+      _selectedImages.clear();
     });
   }
 
   void _pickImageSource() {
+    if (_selectedImages.length >= 5) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('คุณสามารถอัปโหลดรูปภาพได้สูงสุด 5 รูปเท่านั้น')));
+       return;
+    }
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -136,16 +141,21 @@ class _AddPartTabState extends State<AddPartTab> {
                 onTap: () async {
                   Navigator.pop(context);
                   final file = await _imageService.pickImage(ImageSource.camera);
-                  if (file != null) setState(() { _selectedImage = file; });
+                  if (file != null) setState(() { _selectedImages.add(file); });
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library),
-                title: const Text('เลือกจากคลังภาพ (Gallery)'),
+                title: const Text('เลือกหลายรูปจากคลังภาพ (Gallery)'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final file = await _imageService.pickImage(ImageSource.gallery);
-                  if (file != null) setState(() { _selectedImage = file; });
+                  final files = await _imageService.pickMultiImage();
+                  if (files.isNotEmpty) {
+                    setState(() { 
+                      int remaining = 5 - _selectedImages.length;
+                      _selectedImages.addAll(files.take(remaining)); 
+                    });
+                  }
                 },
               ),
             ],
@@ -165,11 +175,12 @@ class _AddPartTabState extends State<AddPartTab> {
     });
 
     try {
-      String imageUrl = 'null';
-      if (_selectedImage != null) {
-        final url = await _imageService.uploadImage(_selectedImage!, 'parts');
-        if (url != null) {
-          imageUrl = url;
+      List<String> imageUrls = [];
+      if (_selectedImages.isNotEmpty) {
+        final futures = _selectedImages.map((file) => _imageService.uploadImage(file, 'parts'));
+        final urls = await Future.wait(futures);
+        for (var url in urls) {
+          if (url != null) imageUrls.add(url);
         }
       }
 
@@ -190,7 +201,8 @@ class _AddPartTabState extends State<AddPartTab> {
         'repair_price': num.tryParse(_repairController.text.trim()) ?? 0,
         'quantity': num.tryParse(_quantityController.text.trim()) ?? 0,
         'compatible_vehicles': _compatibleVehicles,
-        'image_url': imageUrl,
+        'image_url': imageUrls.isNotEmpty ? imageUrls.first : 'null',
+        'image_urls': imageUrls,
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       };
@@ -386,30 +398,69 @@ class _AddPartTabState extends State<AddPartTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('รูปถ่าย (กดเพื่อเลือก/ถ่ายรูป)', style: TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 12),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            GestureDetector(
-                              onTap: _pickImageSource,
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(8.0),
-                                  image: _selectedImage != null
-                                      ? DecorationImage(
-                                          image: FileImage(_selectedImage!),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
+                            const Text('รูปถ่าย (สูงสุด 5 รูป)', style: TextStyle(color: Colors.grey)),
+                            Text('${_selectedImages.length}/5', style: TextStyle(color: _selectedImages.length == 5 ? Colors.red : Colors.grey)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
+                          children: [
+                            ..._selectedImages.asMap().entries.map((entry) {
+                              int idx = entry.key;
+                              File file = entry.value;
+                              return Stack(
+                                children: [
+                                  Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade300,
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      image: DecorationImage(
+                                        image: FileImage(file),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedImages.removeAt(idx);
+                                        });
+                                      },
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }),
+                            if (_selectedImages.length < 5)
+                              GestureDetector(
+                                onTap: _pickImageSource,
+                                child: Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade300,
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  child: const Icon(Icons.add_a_photo, color: Colors.grey),
                                 ),
-                                child: _selectedImage == null
-                                    ? const Icon(Icons.add_a_photo, color: Colors.grey)
-                                    : null,
                               ),
-                            ),
                           ],
                         )
                       ],

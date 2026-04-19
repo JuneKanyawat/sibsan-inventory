@@ -9,6 +9,23 @@ class ImageService {
   /// Picks an image from the specified source (camera or gallery).
   /// Automatically compresses the image to a max width/height of 1080
   /// and roughly 70% quality to save memory and storage.
+  /// Picks multiple images from the gallery.
+  /// Automatically compresses the images to a max width/height of 1080
+  /// and roughly 70% quality to save memory and storage.
+  Future<List<File>> pickMultiImage() async {
+    try {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
+        maxWidth: 1080,
+        maxHeight: 1080,
+        imageQuality: 70,
+      );
+      return pickedFiles.map((xFile) => File(xFile.path)).toList();
+    } catch (e) {
+      print('Error picking multi images: $e');
+    }
+    return [];
+  }
+
   Future<File?> pickImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(

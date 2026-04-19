@@ -48,9 +48,17 @@ class PartDetailScreen extends StatelessWidget {
       tags = tagsRaw;
     }
 
-    final imagePathRaw = currentData['image_url'] ?? currentData['image_path'];
-    final imagePath = imagePathRaw?.toString() ?? '';
-    final hasImage = imagePath.isNotEmpty && imagePath.toLowerCase() != 'null';
+    final rawImageUrls = currentData['image_urls'];
+    List<String> imageUrls = [];
+    if (rawImageUrls is List && rawImageUrls.isNotEmpty) {
+      imageUrls = rawImageUrls.map((e) => e.toString()).toList();
+    } else {
+      final imagePathRaw = currentData['image_url'] ?? currentData['image_path'];
+      final imagePath = imagePathRaw?.toString() ?? '';
+      if (imagePath.isNotEmpty && imagePath.toLowerCase() != 'null') {
+        imageUrls.add(imagePath);
+      }
+    }
 
     final compatibleRaw = currentData['compatible_vehicles'];
     List<dynamic> compatibleVehicles = [];
@@ -125,23 +133,7 @@ class PartDetailScreen extends StatelessWidget {
             const SizedBox(height: 24),
             
             // Image Box
-            Center(
-              child: Container(
-                height: 240,
-                width: 240,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(8.0),
-                  image: hasImage ? DecorationImage(
-                    image: NetworkImage(imagePath),
-                    fit: BoxFit.cover,
-                  ) : null,
-                ),
-                child: hasImage 
-                  ? null
-                  : const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
-              ),
-            ),
+            _ImageSlider(imageUrls: imageUrls),
 
             const SizedBox(height: 32),
             
@@ -191,6 +183,161 @@ class PartDetailScreen extends StatelessWidget {
       ),
     );
       },
+    );
+  }
+}
+
+class _ImageSlider extends StatefulWidget {
+  final List<String> imageUrls;
+  const _ImageSlider({required this.imageUrls});
+
+  @override
+  State<_ImageSlider> createState() => _ImageSliderState();
+}
+
+class _ImageSliderState extends State<_ImageSlider> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.imageUrls.isEmpty) {
+      return Center(
+        child: Container(
+          height: 240,
+          width: 240,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 240,
+          width: 240,
+          child: PageView.builder(
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => _FullScreenGallery(
+                        imageUrls: widget.imageUrls,
+                        initialIndex: index,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(8.0),
+                    image: DecorationImage(
+                      image: NetworkImage(widget.imageUrls[index]),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (widget.imageUrls.length > 1) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              widget.imageUrls.length,
+              (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                width: 8.0,
+                height: 8.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentIndex == index ? Colors.blue : Colors.grey.shade300,
+                ),
+              ),
+            ),
+          ),
+        ]
+      ],
+    );
+  }
+}
+
+class _FullScreenGallery extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const _FullScreenGallery({required this.imageUrls, required this.initialIndex});
+
+  @override
+  State<_FullScreenGallery> createState() => _FullScreenGalleryState();
+}
+
+class _FullScreenGalleryState extends State<_FullScreenGallery> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          '${_currentIndex + 1} / ${widget.imageUrls.length}', 
+          style: const TextStyle(color: Colors.white)
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.imageUrls.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.network(
+                widget.imageUrls[index],
+                fit: BoxFit.contain,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
