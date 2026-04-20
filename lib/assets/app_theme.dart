@@ -83,6 +83,11 @@ final ThemeData appTheme = ThemeData(
     showUnselectedLabels: false,
   ),
   textTheme: _asthaTutorialTextTheme(ThemeData.light().textTheme),
+  textSelectionTheme: const TextSelectionThemeData(
+    cursorColor: Colors.black,
+    selectionColor: Color(0x4DFFF9C4),
+    selectionHandleColor: Colors.black,
+  ),
   inputDecorationTheme: const InputDecorationTheme(
     focusedBorder: OutlineInputBorder(
       borderSide: BorderSide(color: Colors.grey, width: 2.0),

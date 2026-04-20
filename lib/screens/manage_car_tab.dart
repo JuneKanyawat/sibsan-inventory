@@ -37,7 +37,7 @@ class _ManageCarTabState extends State<ManageCarTab> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'ค้นหายี่ห้อ หรือ รุ่นรถ...',
+                hintText: 'ค้นหายี่ห้อ, รุ่นรถ หรือแท็ก...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty 
                     ? IconButton(
@@ -75,7 +75,17 @@ class _ManageCarTabState extends State<ManageCarTab> {
                     final data = doc.data() as Map<String, dynamic>;
                     final brand = (data['brand']?.toString() ?? '').toLowerCase();
                     final model = (data['model']?.toString() ?? '').toLowerCase();
-                    return brand.contains(queryLower) || model.contains(queryLower);
+                    
+                    // Search in tag field (can be String or List)
+                    final tagRaw = data['tag'];
+                    bool tagMatch = false;
+                    if (tagRaw is List) {
+                      tagMatch = tagRaw.any((t) => t.toString().toLowerCase().contains(queryLower));
+                    } else if (tagRaw is String) {
+                      tagMatch = tagRaw.toLowerCase().contains(queryLower);
+                    }
+
+                    return brand.contains(queryLower) || model.contains(queryLower) || tagMatch;
                   }).toList();
                 }
 

@@ -20,7 +20,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _yearController = TextEditingController();
   final _tagController = TextEditingController();
 
-  File? _selectedImage;
+  List<File> _selectedImages = [];
   final ImageService _imageService = ImageService();
 
   bool _isLoading = false;
@@ -35,6 +35,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   }
 
   void _pickImageSource() {
+    if (_selectedImages.length >= 3) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('คุณสามารถอัปโหลดรูปภาพได้สูงสุด 3 รูปเท่านั้น')));
+       return;
+    }
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -47,7 +52,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 onTap: () async {
                   Navigator.pop(context);
                   final file = await _imageService.pickImage(ImageSource.camera);
-                  if (file != null) setState(() { _selectedImage = file; });
+                  if (file != null) setState(() { _selectedImages.add(file); });
                 },
               ),
               ListTile(
@@ -55,8 +60,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 title: const Text('เลือกจากคลังภาพ (Gallery)'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final file = await _imageService.pickImage(ImageSource.gallery);
-                  if (file != null) setState(() { _selectedImage = file; });
+                  final files = await _imageService.pickMultiImage();
+                  if (files.isNotEmpty) {
+                    setState(() { 
+                      int remaining = 3 - _selectedImages.length;
+                      _selectedImages.addAll(files.take(remaining)); 
+                    });
+                  }
                 },
               ),
             ],
@@ -77,11 +87,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     });
 
     try {
-      String imageUrl = 'null';
-      if (_selectedImage != null) {
-        final url = await _imageService.uploadImage(_selectedImage!, 'vehicles');
-        if (url != null) {
-          imageUrl = url;
+      List<String> imageUrls = [];
+      if (_selectedImages.isNotEmpty) {
+        final futures = _selectedImages.map((file) => _imageService.uploadImage(file, 'vehicles'));
+        final urls = await Future.wait(futures);
+        for (var url in urls) {
+          if (url != null) imageUrls.add(url);
         }
       }
 
@@ -96,7 +107,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'model': _modelController.text.trim(),
         'year': _yearController.text.trim(),
         'tag': tags,
-        'image': imageUrl,
+        'image': imageUrls.isNotEmpty ? imageUrls.first : 'null',
+        'image_urls': imageUrls,
         'created_at': FieldValue.serverTimestamp(),
       };
 
@@ -175,30 +187,70 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('รูปถ่าย (กดเพื่อเลือก/ถ่ายรูป)', style: TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 12),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        GestureDetector(
-                          onTap: _pickImageSource,
-                          child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(8.0),
-                              image: _selectedImage != null
-                                  ? DecorationImage(
-                                      image: FileImage(_selectedImage!),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
+                        const Text('รูปถ่าย (สูงสุด 3 รูป)', style: TextStyle(color: Colors.grey)),
+                        Text('${_selectedImages.length}/3', 
+                            style: TextStyle(color: _selectedImages.length == 3 ? Colors.red : Colors.grey)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: [
+                        ..._selectedImages.asMap().entries.map((entry) {
+                          int idx = entry.key;
+                          File file = entry.value;
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  image: DecorationImage(
+                                    image: FileImage(file),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedImages.removeAt(idx);
+                                    });
+                                  },
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                        if (_selectedImages.length < 3)
+                          GestureDetector(
+                            onTap: _pickImageSource,
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: const Icon(Icons.add_a_photo, color: Colors.grey),
                             ),
-                            child: _selectedImage == null
-                                ? const Icon(Icons.add_a_photo, color: Colors.grey)
-                                : null,
                           ),
-                        ),
                       ],
                     )
                   ],

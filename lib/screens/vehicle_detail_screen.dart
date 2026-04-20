@@ -63,9 +63,17 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           tags = tagsRaw;
         }
 
-        final imagePathRaw = currentData['image'] ?? currentData['image_url'] ?? currentData['image_path'];
-        final imagePath = imagePathRaw?.toString() ?? '';
-        final hasImage = imagePath.isNotEmpty && imagePath.toLowerCase() != 'null';
+        final rawImageUrls = currentData['image_urls'];
+        List<String> imageUrls = [];
+        if (rawImageUrls is List && rawImageUrls.isNotEmpty) {
+          imageUrls = rawImageUrls.map((e) => e.toString()).toList();
+        } else {
+          final imagePathRaw = currentData['image'] ?? currentData['image_url'] ?? currentData['image_path'];
+          final imagePath = imagePathRaw?.toString() ?? '';
+          if (imagePath.isNotEmpty && imagePath.toLowerCase() != 'null') {
+            imageUrls.add(imagePath);
+          }
+        }
 
         return Scaffold(
           appBar: AppBar(
@@ -133,23 +141,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 const SizedBox(height: 24),
                 
                 // Image Box
-                Center(
-                  child: Container(
-                    height: 240,
-                    width: 240,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(8.0),
-                      image: hasImage ? DecorationImage(
-                        image: NetworkImage(imagePath),
-                        fit: BoxFit.cover,
-                      ) : null,
-                    ),
-                    child: hasImage 
-                      ? null
-                      : const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
-                  ),
-                ),
+                _VehicleImageSlider(imageUrls: imageUrls),
 
                 const SizedBox(height: 32),
                 
@@ -163,7 +155,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                   controller: _searchController,
                   onChanged: (value) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: 'ค้นหาอะไหล่ (ชื่อ หรือ บาร์โค้ด)...',
+                    hintText: 'ค้นหาอะไหล่ (ชื่อ, บาร์โค้ด หรือแท็ก)...',
                     prefixIcon: const Icon(Icons.search),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
@@ -204,7 +196,12 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       final partData = doc.data() as Map<String, dynamic>;
                       final partName = _formatText(partData['name']).toLowerCase();
                       final partBarcode = _formatText(partData['barcode']).toLowerCase();
-                      return partName.contains(query) || partBarcode.contains(query);
+                      
+                      // Search in tags list
+                      final tags = (partData['tags'] as List<dynamic>?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+                      final tagsMatch = tags.any((tag) => tag.contains(query));
+
+                      return partName.contains(query) || partBarcode.contains(query) || tagsMatch;
                     }).toList();
 
                     if (filteredDocs.isEmpty) {
@@ -234,7 +231,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                         final partData = filteredDocs[index].data() as Map<String, dynamic>;
                         final partName = _formatText(partData['name']);
                         final partBarcode = _formatText(partData['barcode']);
-                        final partPrice = _formatText(partData['cost_price']);
+                        final partPrice = _formatText(partData['sell_price']);
 
                         return InkWell(
                           onTap: () {
@@ -294,6 +291,161 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _VehicleImageSlider extends StatefulWidget {
+  final List<String> imageUrls;
+  const _VehicleImageSlider({required this.imageUrls});
+
+  @override
+  State<_VehicleImageSlider> createState() => _VehicleImageSliderState();
+}
+
+class _VehicleImageSliderState extends State<_VehicleImageSlider> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.imageUrls.isEmpty) {
+      return Center(
+        child: Container(
+          height: 240,
+          width: 240,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 240,
+          width: 240,
+          child: PageView.builder(
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => _VehicleFullScreenGallery(
+                        imageUrls: widget.imageUrls,
+                        initialIndex: index,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(8.0),
+                    image: DecorationImage(
+                      image: NetworkImage(widget.imageUrls[index]),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (widget.imageUrls.length > 1) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              widget.imageUrls.length,
+              (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                width: 8.0,
+                height: 8.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentIndex == index ? Colors.blue : Colors.grey.shade300,
+                ),
+              ),
+            ),
+          ),
+        ]
+      ],
+    );
+  }
+}
+
+class _VehicleFullScreenGallery extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const _VehicleFullScreenGallery({required this.imageUrls, required this.initialIndex});
+
+  @override
+  State<_VehicleFullScreenGallery> createState() => _VehicleFullScreenGalleryState();
+}
+
+class _VehicleFullScreenGalleryState extends State<_VehicleFullScreenGallery> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          '${_currentIndex + 1} / ${widget.imageUrls.length}', 
+          style: const TextStyle(color: Colors.white)
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.imageUrls.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.network(
+                widget.imageUrls[index],
+                fit: BoxFit.contain,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

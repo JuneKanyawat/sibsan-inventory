@@ -132,7 +132,7 @@ class _HomeTabState extends State<_HomeTab> {
               });
             },
             decoration: InputDecoration(
-              hintText: 'ค้นหาชื่อหรือบาร์โค้ด...',
+              hintText: 'ค้นหาชื่อ, บาร์โค้ด หรือแท็ก...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchQuery.isNotEmpty 
                   ? IconButton(
@@ -168,7 +168,12 @@ class _HomeTabState extends State<_HomeTab> {
                   final data = doc.data() as Map<String, dynamic>;
                   final name = (data['name']?.toString() ?? '').toLowerCase();
                   final barcode = (data['barcode']?.toString() ?? '').toLowerCase();
-                  return name.contains(queryLower) || barcode.contains(queryLower);
+                  
+                  // Search in tags list
+                  final tags = (data['tags'] as List<dynamic>?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+                  final tagsMatch = tags.any((tag) => tag.contains(queryLower));
+                  
+                  return name.contains(queryLower) || barcode.contains(queryLower) || tagsMatch;
                 }).toList();
               }
 
@@ -182,7 +187,7 @@ class _HomeTabState extends State<_HomeTab> {
                   final data = docs[index].data() as Map<String, dynamic>;
                   final docId = docs[index].id;
                   final name = data['name']?.toString() ?? 'Name';
-                  final price = data['cost_price']?.toString() ?? '490';
+                  final price = data['sell_price']?.toString() ?? '490';
                   final barcode = data['barcode']?.toString() ?? '2345656886';
                   final location = data['location']?.toString() ?? 'C21';
 

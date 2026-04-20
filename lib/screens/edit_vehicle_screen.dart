@@ -23,8 +23,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   late final TextEditingController _yearController;
   late final TextEditingController _tagController;
 
-  String? _existingImageUrl;
-  File? _selectedImage;
+  List<String> _existingImageUrls = [];
+  List<File> _newImages = [];
   final ImageService _imageService = ImageService();
 
   bool _isLoading = false;
@@ -47,9 +47,14 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     }
     _tagController = TextEditingController(text: tagsStr);
 
-    final rawImage = d['image_url'] ?? d['image'];
-    if (rawImage != null && rawImage.toString().trim() != 'null' && rawImage.toString().trim().isNotEmpty) {
-      _existingImageUrl = rawImage.toString().trim();
+    final rawImages = d['image_urls'];
+    if (rawImages is List) {
+      _existingImageUrls = rawImages.map((e) => e.toString()).toList();
+    } else {
+      final rawImage = d['image_url'] ?? d['image'];
+      if (rawImage != null && rawImage.toString().trim() != 'null' && rawImage.toString().trim().isNotEmpty) {
+        _existingImageUrls.add(rawImage.toString().trim());
+      }
     }
   }
 
@@ -63,6 +68,11 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   }
 
   void _pickImageSource() {
+    if (_existingImageUrls.length + _newImages.length >= 3) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('คุณสามารถอัปโหลดรูปภาพได้สูงสุด 3 รูปเท่านั้น')));
+       return;
+    }
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -75,7 +85,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                 onTap: () async {
                   Navigator.pop(context);
                   final file = await _imageService.pickImage(ImageSource.camera);
-                  if (file != null) setState(() { _selectedImage = file; });
+                  if (file != null) setState(() { _newImages.add(file); });
                 },
               ),
               ListTile(
@@ -83,8 +93,13 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                 title: const Text('เลือกจากคลังภาพ (Gallery)'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final file = await _imageService.pickImage(ImageSource.gallery);
-                  if (file != null) setState(() { _selectedImage = file; });
+                  final files = await _imageService.pickMultiImage();
+                  if (files.isNotEmpty) {
+                    setState(() { 
+                      int remaining = 3 - (_existingImageUrls.length + _newImages.length);
+                      _newImages.addAll(files.take(remaining)); 
+                    });
+                  }
                 },
               ),
             ],
@@ -154,11 +169,13 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     });
 
     try {
-      String imageUrl = _existingImageUrl ?? 'null';
-      if (_selectedImage != null) {
-        final url = await _imageService.uploadImage(_selectedImage!, 'vehicles');
-        if (url != null) {
-          imageUrl = url;
+      List<String> finalImageUrls = List.from(_existingImageUrls);
+      
+      if (_newImages.isNotEmpty) {
+        final futures = _newImages.map((file) => _imageService.uploadImage(file, 'vehicles'));
+        final urls = await Future.wait(futures);
+        for (var url in urls) {
+          if (url != null) finalImageUrls.add(url);
         }
       }
 
@@ -173,7 +190,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
         'model': _modelController.text.trim(),
         'year': _yearController.text.trim(),
         'tag': tags,
-        'image': imageUrl,
+        'image': finalImageUrls.isNotEmpty ? finalImageUrls.first : 'null',
+        'image_urls': finalImageUrls,
       };
 
       await FirebaseFirestore.instance.collection('vehicles').doc(widget.docId).update(updatedData);
@@ -251,35 +269,110 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('รูปถ่าย (กดเพื่อเปลี่ยน/ถ่ายรูปใหม่)', style: TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 12),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        GestureDetector(
-                          onTap: _pickImageSource,
-                          child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(8.0),
-                              image: _selectedImage != null
-                                  ? DecorationImage(
-                                      image: FileImage(_selectedImage!),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : (_existingImageUrl != null
-                                      ? DecorationImage(
-                                          image: NetworkImage(_existingImageUrl!),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null),
+                        const Text('รูปถ่าย (สูงสุด 3 รูป)', style: TextStyle(color: Colors.grey)),
+                        Text('${_existingImageUrls.length + _newImages.length}/3', 
+                            style: TextStyle(color: (_existingImageUrls.length + _newImages.length) == 3 ? Colors.red : Colors.grey)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: [
+                        // Show existing images
+                        ..._existingImageUrls.asMap().entries.map((entry) {
+                          int idx = entry.key;
+                          String url = entry.value;
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  image: DecorationImage(
+                                    image: NetworkImage(url),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _existingImageUrls.removeAt(idx);
+                                    });
+                                  },
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                        // Show new images
+                        ..._newImages.asMap().entries.map((entry) {
+                          int idx = entry.key;
+                          File file = entry.value;
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  image: DecorationImage(
+                                    image: FileImage(file),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _newImages.removeAt(idx);
+                                    });
+                                  },
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                        if ((_existingImageUrls.length + _newImages.length) < 3)
+                          GestureDetector(
+                            onTap: _pickImageSource,
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: const Icon(Icons.add_a_photo, color: Colors.grey),
                             ),
-                            child: _selectedImage == null && _existingImageUrl == null
-                                ? const Icon(Icons.add_a_photo, color: Colors.grey)
-                                : null,
                           ),
-                        ),
                       ],
                     )
                   ],
