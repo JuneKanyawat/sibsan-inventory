@@ -169,6 +169,22 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     });
 
     try {
+      final existing = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .where('brand', isEqualTo: _brandController.text.trim())
+          .where('model', isEqualTo: _modelController.text.trim())
+          .get();
+
+      final duplicate = existing.docs.where((doc) => doc.id != widget.docId).toList();
+      if (duplicate.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('มีข้อมูลรถยนต์ ยี่ห้อ และ รุ่น นี้ในระบบแล้ว')),
+          );
+          setState(() { _isLoading = false; });
+        }
+        return;
+      }
       List<String> finalImageUrls = List.from(_existingImageUrls);
       
       if (_newImages.isNotEmpty) {

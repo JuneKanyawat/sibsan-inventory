@@ -88,6 +88,16 @@ class _AddPartTabState extends State<AddPartTab> {
 
   void _addVehicle() {
     if (_selectedBrand != null && _selectedModel != null) {
+      final exists = _compatibleVehicles.any((v) => 
+          v['brand'] == _selectedBrand && v['model'] == _selectedModel);
+      
+      if (exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('คุณได้เพิ่มรถรุ่นนี้ไปแล้ว')),
+        );
+        return;
+      }
+
       setState(() {
         _compatibleVehicles.add({
           'brand': _selectedBrand!,

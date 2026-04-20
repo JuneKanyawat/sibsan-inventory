@@ -190,7 +190,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     }
 
                     final partsDocs = partsSnapshot.data?.docs ?? [];
-                    final query = _searchController.text.trim().toLowerCase();
+                    final queries = _searchController.text.trim().toLowerCase().split(' ').where((q) => q.isNotEmpty).toList();
                     
                     final filteredDocs = partsDocs.where((doc) {
                       final partData = doc.data() as Map<String, dynamic>;
@@ -199,9 +199,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       
                       // Search in tags list
                       final tags = (partData['tags'] as List<dynamic>?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
-                      final tagsMatch = tags.any((tag) => tag.contains(query));
-
-                      return partName.contains(query) || partBarcode.contains(query) || tagsMatch;
+                      
+                      return queries.every((q) {
+                        bool matchName = partName.contains(q);
+                        bool matchBarcode = partBarcode.contains(q);
+                        bool matchTags = tags.any((tag) => tag.contains(q));
+                        return matchName || matchBarcode || matchTags;
+                      });
                     }).toList();
 
                     if (filteredDocs.isEmpty) {

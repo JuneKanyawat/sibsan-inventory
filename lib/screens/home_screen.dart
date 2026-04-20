@@ -163,7 +163,7 @@ class _HomeTabState extends State<_HomeTab> {
               var docs = snapshot.data?.docs ?? [];
 
               if (_searchQuery.isNotEmpty) {
-                final queryLower = _searchQuery.toLowerCase();
+                final queries = _searchQuery.toLowerCase().split(' ').where((q) => q.isNotEmpty).toList();
                 docs = docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final name = (data['name']?.toString() ?? '').toLowerCase();
@@ -171,9 +171,13 @@ class _HomeTabState extends State<_HomeTab> {
                   
                   // Search in tags list
                   final tags = (data['tags'] as List<dynamic>?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
-                  final tagsMatch = tags.any((tag) => tag.contains(queryLower));
                   
-                  return name.contains(queryLower) || barcode.contains(queryLower) || tagsMatch;
+                  return queries.every((q) {
+                    bool matchName = name.contains(q);
+                    bool matchBarcode = barcode.contains(q);
+                    bool matchTags = tags.any((tag) => tag.contains(q));
+                    return matchName || matchBarcode || matchTags;
+                  });
                 }).toList();
               }
 

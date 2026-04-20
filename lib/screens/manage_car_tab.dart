@@ -70,7 +70,7 @@ class _ManageCarTabState extends State<ManageCarTab> {
                 var docs = snapshot.data?.docs ?? [];
 
                 if (_searchQuery.isNotEmpty) {
-                  final queryLower = _searchQuery.toLowerCase();
+                  final queries = _searchQuery.toLowerCase().split(' ').where((q) => q.isNotEmpty).toList();
                   docs = docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     final brand = (data['brand']?.toString() ?? '').toLowerCase();
@@ -78,14 +78,19 @@ class _ManageCarTabState extends State<ManageCarTab> {
                     
                     // Search in tag field (can be String or List)
                     final tagRaw = data['tag'];
-                    bool tagMatch = false;
+                    List<String> tags = [];
                     if (tagRaw is List) {
-                      tagMatch = tagRaw.any((t) => t.toString().toLowerCase().contains(queryLower));
-                    } else if (tagRaw is String) {
-                      tagMatch = tagRaw.toLowerCase().contains(queryLower);
+                      tags = tagRaw.map((e) => e.toString().toLowerCase()).toList();
+                    } else if (tagRaw is String && tagRaw.toLowerCase() != 'null') {
+                      tags = [tagRaw.toLowerCase()];
                     }
 
-                    return brand.contains(queryLower) || model.contains(queryLower) || tagMatch;
+                    return queries.every((q) {
+                      bool matchBrand = brand.contains(q);
+                      bool matchModel = model.contains(q);
+                      bool matchTag = tags.any((t) => t.contains(q));
+                      return matchBrand || matchModel || matchTag;
+                    });
                   }).toList();
                 }
 

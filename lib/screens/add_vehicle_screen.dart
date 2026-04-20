@@ -87,6 +87,22 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     });
 
     try {
+      final existing = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .where('brand', isEqualTo: _brandController.text.trim())
+          .where('model', isEqualTo: _modelController.text.trim())
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('มีข้อมูลรถยนต์ ยี่ห้อ และ รุ่น นี้ในระบบแล้ว')),
+          );
+          setState(() { _isLoading = false; });
+        }
+        return;
+      }
       List<String> imageUrls = [];
       if (_selectedImages.isNotEmpty) {
         final futures = _selectedImages.map((file) => _imageService.uploadImage(file, 'vehicles'));
