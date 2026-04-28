@@ -22,6 +22,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   late final TextEditingController _modelController;
   late final TextEditingController _yearController;
   late final TextEditingController _tagController;
+  late final TextEditingController _descriptionController;
+
 
   List<String> _existingImageUrls = [];
   List<File> _newImages = [];
@@ -46,6 +48,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
       tagsStr = tagsRaw;
     }
     _tagController = TextEditingController(text: tagsStr);
+    _descriptionController = TextEditingController(text: d['description']?.toString() ?? '');
+
 
     final rawImages = d['image_urls'];
     if (rawImages is List) {
@@ -64,6 +68,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     _modelController.dispose();
     _yearController.dispose();
     _tagController.dispose();
+    _descriptionController.dispose();
+
     super.dispose();
   }
 
@@ -201,20 +207,85 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
           .where((e) => e.isNotEmpty)
           .toList();
 
+      final oldBrand = widget.initialData['brand']?.toString().trim() ?? '';
+      final oldModel = widget.initialData['model']?.toString().trim() ?? '';
+      final newBrand = _brandController.text.trim();
+      final newModel = _modelController.text.trim();
+
       final updatedData = {
-        'brand': _brandController.text.trim(),
-        'model': _modelController.text.trim(),
+        'brand': newBrand,
+        'model': newModel,
         'year': _yearController.text.trim(),
         'tag': tags,
+        'description': _descriptionController.text.trim(),
         'image': finalImageUrls.isNotEmpty ? finalImageUrls.first : 'null',
         'image_urls': finalImageUrls,
       };
 
       await FirebaseFirestore.instance.collection('vehicles').doc(widget.docId).update(updatedData);
 
+      // Cascading update for parts
+      if (oldBrand != newBrand || oldModel != newModel) {
+        final partsRef = FirebaseFirestore.instance.collection('parts');
+        
+        // 1. Query parts by vehicleId (the new more robust way)
+        final queryById = await partsRef.where('compatible_vehicles', arrayContainsAny: [
+          {
+            'brand': oldBrand,
+            'model': oldModel,
+            'vehicleId': widget.docId,
+          },
+          // Just in case it was already updated partially
+          {
+            'brand': newBrand,
+            'model': newModel,
+            'vehicleId': widget.docId,
+          }
+        ]).get();
+
+        // 2. Query parts by old brand/model (the legacy way)
+        final queryByOldName = await partsRef.where('compatible_vehicles', arrayContains: {
+          'brand': oldBrand,
+          'model': oldModel,
+        }).get();
+
+        final allParts = {...queryById.docs, ...queryByOldName.docs};
+
+        if (allParts.isNotEmpty) {
+          final batch = FirebaseFirestore.instance.batch();
+          for (var partDoc in allParts) {
+            final partData = partDoc.data() as Map<String, dynamic>;
+            final List<dynamic> vehicles = List.from(partData['compatible_vehicles'] ?? []);
+            
+            bool changed = false;
+            for (int i = 0; i < vehicles.length; i++) {
+              final v = vehicles[i];
+              if (v is Map) {
+                bool matchId = v['vehicleId'] == widget.docId;
+                bool matchName = v['brand'] == oldBrand && v['model'] == oldModel;
+                
+                if (matchId || matchName) {
+                  vehicles[i] = {
+                    'brand': newBrand,
+                    'model': newModel,
+                    'vehicleId': widget.docId,
+                  };
+                  changed = true;
+                }
+              }
+            }
+            
+            if (changed) {
+              batch.update(partDoc.reference, {'compatible_vehicles': vehicles});
+            }
+          }
+          await batch.commit();
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('แก้ไขข้อมูลรถยนต์สำเร็จ')),
+          const SnackBar(content: Text('แก้ไขข้อมูลรถยนต์และอัปเดตอะไหล่ที่เกี่ยวข้องสำเร็จ')),
         );
         Navigator.pop(context); // Go back after saving
       }
@@ -272,7 +343,9 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
               _buildTextField('ยี่ห้อ (Brand)', _brandController),
               _buildTextField('รุ่น (Model)', _modelController),
               _buildTextField('ปี (Year) เช่น 2019-2030', _yearController),
+              _buildTextField('คำอธิบาย (Description)', _descriptionController),
               _buildTextField('tag (คั่นด้วยลูกน้ำ)', _tagController),
+
 
               // Photos Section
               Container(

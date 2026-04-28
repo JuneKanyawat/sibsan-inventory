@@ -29,7 +29,8 @@ class _AddPartTabState extends State<AddPartTab> {
   String? _selectedBrand;
   String? _selectedModel;
 
-  final List<Map<String, String>> _compatibleVehicles = [];
+  List<Map<String, dynamic>> _compatibleVehicles = [];
+
 
   List<File> _selectedImages = [];
   final ImageService _imageService = ImageService();
@@ -45,11 +46,13 @@ class _AddPartTabState extends State<AddPartTab> {
   Future<void> _fetchVehicles() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('vehicles').get();
-      if (mounted) {
         setState(() {
-          _vehiclesDb = snapshot.docs.map((d) => d.data()).toList();
+          _vehiclesDb = snapshot.docs.map((d) => {
+            ...d.data(),
+            'id': d.id,
+          }).toList();
         });
-      }
+
     } catch (e) {
       debugPrint("Error fetching vehicles: $e");
     }
@@ -102,7 +105,9 @@ class _AddPartTabState extends State<AddPartTab> {
         _compatibleVehicles.add({
           'brand': _selectedBrand!,
           'model': _selectedModel!,
+          'vehicleId': _vehiclesDb.firstWhere((v) => v['brand'] == _selectedBrand && v['model'] == _selectedModel)['id'],
         });
+
         _selectedBrand = null;
         _selectedModel = null;
       });

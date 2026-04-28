@@ -32,7 +32,8 @@ class _EditPartScreenState extends State<EditPartScreen> {
   String? _selectedBrand;
   String? _selectedModel;
 
-  late List<Map<String, String>> _compatibleVehicles;
+  late List<Map<String, dynamic>> _compatibleVehicles;
+
 
   List<String> _existingImageUrls = [];
   List<File> _newImages = [];
@@ -73,10 +74,12 @@ class _EditPartScreenState extends State<EditPartScreen> {
           _compatibleVehicles.add({
             'brand': v['brand']?.toString() ?? '',
             'model': v['model']?.toString() ?? '',
+            'vehicleId': v['vehicleId']?.toString() ?? '',
           });
         }
       }
     }
+
 
     final rawImages = d['image_urls'];
     if (rawImages is List) {
@@ -96,8 +99,12 @@ class _EditPartScreenState extends State<EditPartScreen> {
       final snapshot = await FirebaseFirestore.instance.collection('vehicles').get();
       if (mounted) {
         setState(() {
-          _vehiclesDb = snapshot.docs.map((d) => d.data()).toList();
+          _vehiclesDb = snapshot.docs.map((d) => {
+            ...d.data(),
+            'id': d.id,
+          }).toList();
         });
+
       }
     } catch (e) {
       debugPrint("Error fetching vehicles: $e");
@@ -151,10 +158,12 @@ class _EditPartScreenState extends State<EditPartScreen> {
         _compatibleVehicles.add({
           'brand': _selectedBrand!,
           'model': _selectedModel!,
+          'vehicleId': _vehiclesDb.firstWhere((v) => v['brand'] == _selectedBrand && v['model'] == _selectedModel)['id'],
         });
         _selectedBrand = null;
         _selectedModel = null;
       });
+
     }
   }
 

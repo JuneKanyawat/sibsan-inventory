@@ -19,6 +19,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _modelController = TextEditingController();
   final _yearController = TextEditingController();
   final _tagController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
 
   List<File> _selectedImages = [];
   final ImageService _imageService = ImageService();
@@ -31,6 +33,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     _modelController.dispose();
     _yearController.dispose();
     _tagController.dispose();
+    _descriptionController.dispose();
+
     super.dispose();
   }
 
@@ -123,7 +127,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'model': _modelController.text.trim(),
         'year': _yearController.text.trim(),
         'tag': tags,
+        'description': _descriptionController.text.trim(),
+
         'image': imageUrls.isNotEmpty ? imageUrls.first : 'null',
+
         'image_urls': imageUrls,
         'created_at': FieldValue.serverTimestamp(),
       };
@@ -190,7 +197,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               _buildTextField('ยี่ห้อ (Brand)', _brandController),
               _buildTextField('รุ่น (Model)', _modelController),
               _buildTextField('ปี (Year) เช่น 2019-2030', _yearController),
+              _buildTextField('คำอธิบาย (Description)', _descriptionController),
               _buildTextField('tag (คั่นด้วยลูกน้ำ)', _tagController),
+
 
               // Photos Section
               Container(

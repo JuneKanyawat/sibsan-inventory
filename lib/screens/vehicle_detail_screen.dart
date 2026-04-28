@@ -176,11 +176,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('parts')
-                      .where('compatible_vehicles', arrayContains: {
-                        'brand': brand,
-                        'model': model,
-                      })
                       .snapshots(),
+
                   builder: (context, partsSnapshot) {
                     if (partsSnapshot.hasError) {
                       return const Center(child: Text('เกิดข้อผิดพลาดในการโหลดข้อมูลอะไหล่'));
@@ -194,12 +191,33 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     
                     final filteredDocs = partsDocs.where((doc) {
                       final partData = doc.data() as Map<String, dynamic>;
+                      
+                      // Match logic: Check if this vehicle is in the compatible list
+                      final List<dynamic> vehicles = partData['compatible_vehicles'] ?? [];
+                      bool isCompatible = vehicles.any((v) {
+                        if (v is! Map) return false;
+                        
+                        // 1. Match by ID (New robust way)
+                        final vId = v['vehicleId']?.toString();
+                        if (vId != null && vId == docId) return true;
+                        
+                        // 2. Fallback: Match by Brand and Model (ensure exact strings or trimmed match)
+                        final vBrand = v['brand']?.toString().trim().toLowerCase() ?? '';
+                        final vModel = v['model']?.toString().trim().toLowerCase() ?? '';
+                        
+                        return vBrand == brand.trim().toLowerCase() && 
+                               vModel == model.trim().toLowerCase();
+                      });
+
+                      if (!isCompatible) return false;
+
+                      // Search filter logic
                       final partName = _formatText(partData['name']).toLowerCase();
                       final partBarcode = _formatText(partData['barcode']).toLowerCase();
-                      
-                      // Search in tags list
                       final tags = (partData['tags'] as List<dynamic>?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
                       
+                      if (queries.isEmpty) return true;
+
                       return queries.every((q) {
                         bool matchName = partName.contains(q);
                         bool matchBarcode = partBarcode.contains(q);
@@ -207,6 +225,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                         return matchName || matchBarcode || matchTags;
                       });
                     }).toList();
+
 
                     if (filteredDocs.isEmpty) {
                       return Container(
