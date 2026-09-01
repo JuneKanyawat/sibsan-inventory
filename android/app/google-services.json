@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "576019782558",
+    "project_id": "sibsan-6a5c6",
+    "storage_bucket": "sibsan-6a5c6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:576019782558:android:81326083f204dd1475148f",
+        "android_client_info": {
+          "package_name": "com.example.sibsan_inventory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnboNfNFkkosrMlEFzoWvMlbNRSOli5ss"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:576019782558:android:85b7de1ace6f7b5475148f",
+        "android_client_info": {
+          "package_name": "com.kanyawat.sibsan_inventory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnboNfNFkkosrMlEFzoWvMlbNRSOli5ss"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
