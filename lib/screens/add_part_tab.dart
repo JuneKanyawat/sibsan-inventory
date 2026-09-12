@@ -64,15 +64,25 @@ class _AddPartTabState extends State<AddPartTab> {
     return brands;
   }
 
-  List<String> _getModelsForBrand(String brand) {
-    final models = _vehiclesDb
+  List<Map<String, String>> _getModelsForBrand(String brand) {
+    final vehicles = _vehiclesDb
         .where((v) => v['brand'] == brand)
-        .map((v) => v['model']?.toString() ?? '')
-        .where((m) => m.isNotEmpty)
-        .toSet()
+        .where((v) => (v['model']?.toString() ?? '').isNotEmpty)
         .toList();
-    models.sort();
-    return models;
+    // Remove duplicates by model name, keep first occurrence
+    final seen = <String>{};
+    final result = <Map<String, String>>[];
+    for (final v in vehicles) {
+      final model = v['model']?.toString() ?? '';
+      if (seen.add(model)) {
+        result.add({
+          'model': model,
+          'year': v['year']?.toString() ?? '',
+        });
+      }
+    }
+    result.sort((a, b) => (a['model'] ?? '').compareTo(b['model'] ?? ''));
+    return result;
   }
 
   @override
@@ -101,11 +111,14 @@ class _AddPartTabState extends State<AddPartTab> {
         return;
       }
 
+      final vehicle = _vehiclesDb.firstWhere((v) => v['brand'] == _selectedBrand && v['model'] == _selectedModel);
+
       setState(() {
         _compatibleVehicles.add({
           'brand': _selectedBrand!,
           'model': _selectedModel!,
-          'vehicleId': _vehiclesDb.firstWhere((v) => v['brand'] == _selectedBrand && v['model'] == _selectedModel)['id'],
+          'year': vehicle['year']?.toString() ?? '',
+          'vehicleId': vehicle['id'],
         });
 
         _selectedBrand = null;
@@ -358,8 +371,11 @@ class _AddPartTabState extends State<AddPartTab> {
                             ),
                             items: _selectedBrand == null
                                 ? []
-                                : _getModelsForBrand(_selectedBrand!).map((model) {
-                                    return DropdownMenuItem(value: model, child: Text(model));
+                                : _getModelsForBrand(_selectedBrand!).map((v) {
+                                    final label = v['year']!.isNotEmpty 
+                                        ? '${v['model']} (${v['year']})' 
+                                        : v['model']!;
+                                    return DropdownMenuItem(value: v['model'], child: Text(label));
                                   }).toList(),
                             onChanged: (value) {
                               setState(() {
@@ -389,7 +405,11 @@ class _AddPartTabState extends State<AddPartTab> {
                               return ListTile(
                                 dense: true,
                                 contentPadding: EdgeInsets.zero,
-                                title: Text('${v['brand']} - ${v['model']}'),
+                                title: Text(
+                                  v['year'] != null && v['year']!.isNotEmpty
+                                      ? '${v['brand']} - ${v['model']} (${v['year']})'
+                                      : '${v['brand']} - ${v['model']}',
+                                ),
                                 trailing: IconButton(
                                   icon: const Icon(Icons.delete, color: Colors.red),
                                   onPressed: () => _removeVehicle(index),
